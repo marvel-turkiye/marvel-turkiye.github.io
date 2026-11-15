@@ -291,7 +291,7 @@ const myTotal=()=>myStats().points, myBest=()=>myStats().best;
 function renderUser(){
   const slot=$('#authSlot'), u=AUTH.user;
   if(u&&FB.ready&&!FB.user&&!u.guest){ AUTH.user=null; try{localStorage.removeItem('mt_user')}catch(e){} }
-  if(!AUTH.user){slot.innerHTML=`<button class="login" id="loginBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5M10 16l4-4-4-4M14 12H3"/></svg><span class="lt">Giriş yap</span></button>`; $('#loginBtn').onclick=openLogin; return;}
+  if(!AUTH.user){const __hp=$('#hudP');__hp&&__hp.remove();slot.innerHTML=`<button class="login" id="loginBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5M10 16l4-4-4-4M14 12H3"/></svg><span class="lt">Giriş yap</span></button>`; $('#loginBtn').onclick=openLogin; return;}
   const __hud=window.__myHud||null, __pts=((typeof FB!=='undefined'&&FB.ready&&FB.user&&typeof FB.myPts==='number')?FB.myPts:myTotal()).toLocaleString('tr-TR');
   let __coins=''; try{ const __cc=(__hud?__hud.coins:(prog().coins||0)); if(__cc) __coins=' · '+__cc.toLocaleString('tr-TR')+' coin'; }catch(e){}
   const __sub=__hud?('Sezon '+__hud.sp.toLocaleString('tr-TR')+' · Hafta '+__hud.wp.toLocaleString('tr-TR')):(__pts+' puan');
@@ -5552,7 +5552,7 @@ const INV_CSS=`
     const mk=tries=>{ const p=new Peer('mtg-'+R.code.toLowerCase()); R.peer=p;
       p.on('open',()=>lobby());
       p.on('error',e=>{ if(e.type==='unavailable-id'&&tries<4){ try{p.destroy();}catch(_){} R.code=randCode(); mk(tries+1); } else toast('Bağlantı hatası',String(e.type||e)); });
-      p.on('connection',c=>{ c.on('data',m=>hostMsg(m,c.peer,c)); c.on('close',()=>{ if(!R) return; delete R.conns[c.peer]; const pl=R.players.find(x=>x.id===c.peer); R.players=R.players.filter(x=>x.id!==c.peer); if(pl) send({t:'sys',x:pl.name+' ayrıldı'}); send({t:'pl',p:R.players}); }); }); };
+      p.on('connection',c=>{ c.on('data',m=>hostMsg(m,c.peer,c)); c.on('close',()=>{ if(!R) return; delete R.conns[c.peer]; const pl=R.players.find(x=>x.id===c.peer); R.players=R.players.filter(x=>x.id!==c.peer); if(pl) send({t:'sys',x:pl.name+' ayrıldı'}); send({t:'pl',p:R.players}); pubRoom(); }); }); };
     mk(0); swap('<p class="dim" style="text-align:center">Oda açılıyor…</p>'); }
   function joinForm(game){ swap(`<div class="on-pick"><p style="margin:0">Arkadaşının verdiği oda kodunu yaz:</p><form class="guess" id="onJf"><input class="field code-in" id="onCode" maxlength="5" placeholder="ABCDE" autocomplete="off" style="text-transform:uppercase"><button class="btn p" type="submit"><span class="bl"><span>Katıl</span><span>Katıl</span></span></button></form></div>`);
     $('#onCode').focus(); $('#onJf').onsubmit=e=>{ e.preventDefault(); const c=$('#onCode').value.trim().toUpperCase(); if(c.length===5) join(game,c); }; }
