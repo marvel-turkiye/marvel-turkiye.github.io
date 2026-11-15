@@ -3728,7 +3728,7 @@ function pickHeroes(){ const r=freshFirst(HEROES,h=>h.ad,'mt_seenh').slice(0,3);
   let seasonP=null, seasonUid=null;
   function ensureSeason(){ if(!(FB.ready&&FB.user)) return Promise.resolve(); if(seasonP&&seasonUid===FB.user.uid) return seasonP; seasonUid=FB.user.uid;
     const ref=FB.db.collection('users').doc(FB.user.uid);
-    seasonP=ref.get().then(sn=>{ const d=sn.exists?sn.data():{}; if(d.season===CUR.id||(d.season&&d.season>CUR.id)) return d;
+    seasonP=ref.get({source:'server'}).then(sn=>{ const d=sn.exists?sn.data():{}; if(d.season===CUR.id||(d.season&&d.season>CUR.id)) return d;
       const up={season:CUR.id,sp:0}; if(d.season) up.lastSeason={id:d.season,sp:d.sp||0};
       return ref.set(up,{merge:true}).then(()=>d); }).catch(()=>({})); return seasonP; }
 
@@ -3854,7 +3854,7 @@ function pickHeroes(){ const r=freshFirst(HEROES,h=>h.ad,'mt_seenh').slice(0,3);
   let wkP=null, wkUid=null;
   function ensureWeek(){ if(!(FB.ready&&FB.user)) return Promise.resolve({}); if(wkP&&wkUid===FB.user.uid) return wkP; wkUid=FB.user.uid;
     const ref=FB.db.collection('users').doc(FB.user.uid);
-    wkP=ref.get().then(sn=>{ const d=sn.exists?sn.data():{}; if(d.wk===WK.id||(d.wk&&d.wk>WK.id)) return d; const up={wk:WK.id,wp:0}; if(d.wk) up.lastWeek={id:d.wk,wp:d.wp||0};
+    wkP=ref.get({source:'server'}).then(sn=>{ const d=sn.exists?sn.data():{}; if(d.wk===WK.id||(d.wk&&d.wk>WK.id)) return d; const up={wk:WK.id,wp:0}; if(d.wk) up.lastWeek={id:d.wk,wp:d.wp||0};
       return ref.set(up,{merge:true}).then(()=>d); }).catch(()=>({})); return wkP; }
   /* wp yazimi mtScoreSync icinde (negatifler dahil) - burada tekrar yazma */
 
@@ -4657,7 +4657,7 @@ function pickHeroes(){ const r=freshFirst(HEROES,h=>h.ad,'mt_seenh').slice(0,3);
 (function(){
   const wkId=()=>{ const t=new Date(Date.now()+3*3600e3); return new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth(),t.getUTCDate()-t.getUTCDay())).toISOString().slice(0,10); };
   async function givePoints(uid,v){
-    const ref=FB.db.collection('users').doc(uid), d=(await ref.get()).data()||{}, S=SEASON().id, W=wkId(), inc=firebase.firestore.FieldValue.increment;
+    const ref=FB.db.collection('users').doc(uid), d=(await ref.get({source:'server'})).data()||{}, S=SEASON().id, W=wkId(), inc=firebase.firestore.FieldValue.increment;
     const up=window.__scoreUp(d,v,S,W,true);
     await ref.set(up,{merge:true});
     if(FB.user&&uid===FB.user.uid){ try{ const k='mt_pts_'+(AUTH.user?(AUTH.user.id||AUTH.user.username):'anon'); const s=JSON.parse(localStorage.getItem(k)||'null')||{points:0,best:0,games:0}; s.points=Math.max(-99999,s.points+v); localStorage.setItem(k,JSON.stringify(s)); }catch(e){} renderUser(); }
@@ -4704,10 +4704,10 @@ function pickHeroes(){ const r=freshFirst(HEROES,h=>h.ad,'mt_seenh').slice(0,3);
   const NC=[['gold','Altın'],['red','Kırmızı'],['blue','Mavi'],['green','Yeşil'],['purple','Mor'],['silver','Gümüş Işıltı'],['fire','Ateş'],['cosmic','Kozmik'],['rainbow','Gökkuşağı']];
   const KINDS=[['points','💰','Puan'],['coins','🪙','Coin'],['xp','⭐','XP'],['card','🃏','Kart'],['pack','🎁','Kart paketi'],['frame','🖼️','Çerçeve'],['nc','🎨','İsim rengi']];
   const wkId=()=>{ const t=new Date(Date.now()+3*3600e3); return new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth(),t.getUTCDate()-t.getUTCDay())).toISOString().slice(0,10); };
-  async function givePoints(uid,v){ const ref=FB.db.collection('users').doc(uid), d=(await ref.get()).data()||{}, S=SEASON().id, W=wkId(), inc=firebase.firestore.FieldValue.increment; const up=window.__scoreUp(d,v,S,W,true);
+  async function givePoints(uid,v){ const ref=FB.db.collection('users').doc(uid), d=(await ref.get({source:'server'})).data()||{}, S=SEASON().id, W=wkId(), inc=firebase.firestore.FieldValue.increment; const up=window.__scoreUp(d,v,S,W,true);
     await ref.set(up,{merge:true}); return d.name||'Oyuncu'; }
   window.mtScoreSync=async(game,score)=>{ try{ if(!(FB.ready&&FB.user)||!score) return; const uid=FB.user.uid, ref=FB.db.collection('users').doc(uid);
-    const sn=await ref.get().catch(()=>null); if(!sn||!sn.exists) return; const d=sn.data()||{};
+    const sn=await ref.get({source:'server'}).catch(()=>null); if(!sn||!sn.exists) return; const d=sn.data()||{};
     const S=SEASON().id, W=wkId(), inc=firebase.firestore.FieldValue.increment, v=Math.round(score), up=window.__scoreUp(d,v,S,W,game!=='daily');
     if(game!=='daily') up.games=inc(1);
     await ref.set(up,{merge:true}).catch(()=>{}); if(Date.now()-(window.__bustT||0)>150e3){ window.__bustT=Date.now(); window.__fsBust&&window.__fsBust('users|orderBy'); } try{ const carry=d.season===S||(d.season&&d.season>S); FB.myPts=game==='daily'?(d.sp||0):Math.max(0,carry?(d.sp||0)+v:v); }catch(e){} }catch(e){} };
