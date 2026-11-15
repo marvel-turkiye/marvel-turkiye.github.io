@@ -5,8 +5,8 @@
   const W=function(id,opt){ if(id&&typeof id==='object'){ opt=id; id=undefined; } const o=Object.assign({},ICE,opt||{}); return new P(id,o); };
   W.prototype=P.prototype; W.__mt=1; try{ window.Peer=W; }catch(e){} })();
 window.__scoreUp=(d,v,S,W,periods)=>{ const inc=firebase.firestore.FieldValue.increment, f=(cur,x)=>x>=0?inc(x):Math.max(0,(cur||0)+x); const up={points:f(d.points,v)};
-  if(periods){ if(d.season===S||(d.season&&d.season>S)){ if(v>=0) up.sp=f(d.sp,v); } else { up.season=S; up.sp=Math.max(0,v); if(d.season) up.lastSeason={id:d.season,sp:d.sp||0}; }
-    if(d.wk===W||(d.wk&&d.wk>W)){ if(v>=0) up.wp=f(d.wp,v); } else { up.wk=W; up.wp=Math.max(0,v); if(d.wk) up.lastWeek={id:d.wk,wp:d.wp||0}; } } return up; };
+  if(periods){ if(!d.season||d.season===S||(d.season&&d.season>S)){ if(v>=0) up.sp=f(d.sp,v); } else { up.season=S; up.sp=Math.max(0,v); if(d.season) up.lastSeason={id:d.season,sp:d.sp||0}; }
+    if(!d.wk||d.wk===W||(d.wk&&d.wk>W)){ if(v>=0) up.wp=f(d.wp,v); } else { up.wk=W; up.wp=Math.max(0,v); if(d.wk) up.lastWeek={id:d.wk,wp:d.wp||0}; } } return up; };
 const ASSETS={sfx:'audio/sfx.mp3',music:'audio/music.mp3'}; const fetchBuf=u=>fetch(u).then(r=>{ if(!r.ok) throw new Error('ses yüklenemedi'); return r.arrayBuffer(); });
 const G=window.gsap, ST=window.ScrollTrigger; if(G&&ST) G.registerPlugin(ST);
 const MTSET=(()=>{ try{ return JSON.parse(localStorage.getItem('mt_set')||'{}')||{}; }catch(e){ return {}; } })(); // kullanıcı ayarları (Ayarlar penceresi)
@@ -3745,7 +3745,7 @@ function pickHeroes(){ const r=freshFirst(HEROES,h=>h.ad,'mt_seenh').slice(0,3);
   function ensureSeason(){ if(!(FB.ready&&FB.user)) return Promise.resolve(); if(seasonP&&seasonUid===FB.user.uid) return seasonP; seasonUid=FB.user.uid;
     const ref=FB.db.collection('users').doc(FB.user.uid);
     seasonP=ref.get({source:'server'}).then(sn=>{ const d=sn.exists?sn.data():{}; if(d.season===CUR.id||(d.season&&d.season>CUR.id)) return d;
-      const up={season:CUR.id,sp:0}; if(d.season) up.lastSeason={id:d.season,sp:d.sp||0};
+      const up={season:CUR.id,sp:d.season?0:(d.sp||0)}; if(d.season&&d.season!==CUR.id) up.lastSeason={id:d.season,sp:d.sp||0};
       return ref.set(up,{merge:true}).then(()=>d); }).catch(()=>({})); return seasonP; }
 
   /* sıralama artık bu sezonun puanına göre */
@@ -3870,7 +3870,7 @@ function pickHeroes(){ const r=freshFirst(HEROES,h=>h.ad,'mt_seenh').slice(0,3);
   let wkP=null, wkUid=null;
   function ensureWeek(){ if(!(FB.ready&&FB.user)) return Promise.resolve({}); if(wkP&&wkUid===FB.user.uid) return wkP; wkUid=FB.user.uid;
     const ref=FB.db.collection('users').doc(FB.user.uid);
-    wkP=ref.get({source:'server'}).then(sn=>{ const d=sn.exists?sn.data():{}; if(d.wk===WK.id||(d.wk&&d.wk>WK.id)) return d; const up={wk:WK.id,wp:0}; if(d.wk) up.lastWeek={id:d.wk,wp:d.wp||0};
+    wkP=ref.get({source:'server'}).then(sn=>{ const d=sn.exists?sn.data():{}; if(d.wk===WK.id||(d.wk&&d.wk>WK.id)) return d; const up={wk:WK.id,wp:d.wk?0:(d.wp||0)}; if(d.wk&&d.wk!==WK.id) up.lastWeek={id:d.wk,wp:d.wp||0};
       return ref.set(up,{merge:true}).then(()=>d); }).catch(()=>({})); return wkP; }
   /* wp yazimi mtScoreSync icinde (negatifler dahil) - burada tekrar yazma */
 
