@@ -5,8 +5,8 @@
   const W=function(id,opt){ if(id&&typeof id==='object'){ opt=id; id=undefined; } const o=Object.assign({},ICE,opt||{}); return new P(id,o); };
   W.prototype=P.prototype; W.__mt=1; try{ window.Peer=W; }catch(e){} })();
 window.__scoreUp=(d,v,S,W,periods)=>{ const inc=firebase.firestore.FieldValue.increment, f=(cur,x)=>x>=0?inc(x):Math.max(0,(cur||0)+x); const up={points:f(d.points,v)};
-  if(periods){ if(d.season===S||(d.season&&d.season>S)) up.sp=f(d.sp,v); else { up.season=S; up.sp=Math.max(0,v); if(d.season) up.lastSeason={id:d.season,sp:d.sp||0}; }
-    if(d.wk===W||(d.wk&&d.wk>W)) up.wp=f(d.wp,v); else { up.wk=W; up.wp=Math.max(0,v); if(d.wk) up.lastWeek={id:d.wk,wp:d.wp||0}; } } return up; };
+  if(periods){ if(d.season===S||(d.season&&d.season>S)){ if(v>=0) up.sp=f(d.sp,v); } else { up.season=S; up.sp=Math.max(0,v); if(d.season) up.lastSeason={id:d.season,sp:d.sp||0}; }
+    if(d.wk===W||(d.wk&&d.wk>W)){ if(v>=0) up.wp=f(d.wp,v); } else { up.wk=W; up.wp=Math.max(0,v); if(d.wk) up.lastWeek={id:d.wk,wp:d.wp||0}; } } return up; };
 const ASSETS={sfx:'audio/sfx.mp3',music:'audio/music.mp3'}; const fetchBuf=u=>fetch(u).then(r=>{ if(!r.ok) throw new Error('ses yüklenemedi'); return r.arrayBuffer(); });
 const G=window.gsap, ST=window.ScrollTrigger; if(G&&ST) G.registerPlugin(ST);
 const MTSET=(()=>{ try{ return JSON.parse(localStorage.getItem('mt_set')||'{}')||{}; }catch(e){ return {}; } })(); // kullanıcı ayarları (Ayarlar penceresi)
@@ -297,6 +297,9 @@ function renderUser(){
   const __sub=__hud?('Sezon '+__hud.sp.toLocaleString('tr-TR')+' · Hafta '+__hud.wp.toLocaleString('tr-TR')):(__pts+' puan');
   slot.innerHTML=`<button class="chip" id="chipBtn" type="button" aria-label="Hesabım">${avatarHTML(u)}<span class="cn"><b class="${window.ncOf?ncOf(u):''}">${esc(u.display||u.username)}</b><small class="${u.micup||u.google?'vf':'pv'}">${u.micup?'● Micup':u.google?'● Google':'● Misafir'} · ${__sub}${__coins}</small></span></button>`;
   $('#chipBtn').onclick=openAccount;
+  if(!document.getElementById('hudCss')){ const hs=document.createElement('style'); hs.id='hudCss'; hs.textContent='.hudp{display:inline-flex;align-items:center;gap:9px;padding:7px 13px;border:3px solid var(--inkc);border-radius:10px;background:linear-gradient(135deg,#2b2013,#14100c);color:var(--fg);font:800 12px var(--mono);cursor:pointer;white-space:nowrap;box-shadow:3px 3px 0 var(--inkc)}.hudp:hover{transform:translate(-1px,-1px)}.hudp .hcoin{color:var(--gold)}.hudp .hsp{color:#7db4ff}.hudp .hwp{color:#3ddc97}@media(max-width:860px){.hudp .hsp,.hudp .hwp{display:none}}'; document.head.appendChild(hs); }
+  let hp=$('#hudP'); if(!hp){ hp=document.createElement('button'); hp.id='hudP'; hp.type='button'; hp.className='hudp'; hp.title='Sezon / Hafta / Coin'; hp.onclick=openAccount; slot.after(hp); }
+  { const h=window.__myHud; hp.innerHTML=h?`<span class="hsp">⚔ ${h.sp.toLocaleString('tr-TR')}</span><span class="hwp">📅 ${h.wp.toLocaleString('tr-TR')}</span><span class="hcoin">🪙 ${h.coins.toLocaleString('tr-TR')}</span>`:`<span class="hcoin">🪙 ${(()=>{try{return (prog().coins||0).toLocaleString('tr-TR')}catch(e){return '0'}})()}</span>`; }
 }
 const micupMark=`<svg viewBox="0 0 44 44" aria-hidden="true"><rect x="1.5" y="1.5" width="41" height="41" rx="6" fill="#15151F" stroke="#07060b" stroke-width="3"/><path d="M12 30V16l10 9 10-9v14" fill="none" stroke="#EEEAE2" stroke-width="3"/></svg>`;
 const check=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M4 12l5 5L20 6"/></svg>`;
@@ -409,7 +412,7 @@ function openAccount(){
   const u=AUTH.user, s=myStats();
   openModal('Hesap');
   swap(`<div class="lg"><div class="lh">${avatarHTML(u,64)}<div><h3>${esc(u.display||u.username)}</h3><p class="mono ${u.micup?'vf':'pv'}" style="margin:8px 0 0">${u.google?'Google ile bağlı'+(u.micupName?' · Micup: @'+esc(u.micupName):''):u.micup?'@'+esc(u.username)+' · Micup ile bağlı'+(u.member===true?' · Marvel Türkiye üyesi':u.member===false?' · sunucuya henüz katılmamış':''):'Misafir hesap'}</p>${u.micup?'<p class="mono dim" style="margin:2px 0 0;font-size:11px">Micup ID: '+esc(String(u.id||''))+' <button type="button" id="cpMic" data-mid="'+esc(String(u.id||'').replace(/^micup_/,''))+'" style="font-size:10px;padding:2px 8px">📋 Kopyala</button></p>':''}${u.micup?roleChips(u):''}</div></div>
-    <ul><li>Sezon puanı <b id="acSp" style="color:var(--gold);margin-left:auto">${s.points.toLocaleString('tr-TR')}</b></li><li>Hafta puanı <b id="acWp" style="color:var(--fg);margin-left:auto">—</b></li><li>Toplam puan <b id="acPts" style="color:var(--fg);margin-left:auto">—</b></li><li>En iyi oyun <b style="color:var(--fg);margin-left:auto">${s.best.toLocaleString('tr-TR')}</b></li><li>Oynanan oyun <b style="color:var(--fg);margin-left:auto">${s.games}</b></li></ul>
+    <ul><li>Sezon puanı <b id="acSp" style="color:var(--gold);margin-left:auto">${s.points.toLocaleString('tr-TR')}</b></li><li>Hafta puanı <b id="acWp" style="color:var(--fg);margin-left:auto">—</b></li><li>Coin <b id="acCoin" style="color:var(--gold);margin-left:auto">—</b></li><li>Toplam puan <b id="acPts" style="color:var(--fg);margin-left:auto">—</b></li><li>En iyi oyun <b style="color:var(--fg);margin-left:auto">${s.best.toLocaleString('tr-TR')}</b></li><li>Oynanan oyun <b style="color:var(--fg);margin-left:auto">${s.games}</b></li></ul>
 <div class="rowb">${u.micup||u.google?'':'<button class="btn p" id="acLink" type="button"><span class="bl"><span>Micup ile giriş</span><span>Micup ile giriş</span></span></button>'}<button class="ghost" id="outBtn" type="button">${u.micup||u.google?'Çıkış yap':'Çıkış yap'}</button></div></div>`);
   const l=$('#acLink'); l&&(l.onclick=openLogin);
 $('#outBtn').onclick=()=>{ if(FB.ready&&FB.user) FB.auth.signOut().catch(()=>{}); AUTH.user=null; AUTH.mode='none'; try{localStorage.removeItem('mt_user'); localStorage.removeItem('mt_micup_token');}catch(e){} renderUser(); renderBoards(); closeModal();};
@@ -4268,6 +4271,8 @@ function pickHeroes(){ const r=freshFirst(HEROES,h=>h.ad,'mt_seenh').slice(0,3);
           <div class="pp-tags"><span class="lv">LV ${lv}</span>${rank?`<span>#${rank} sıralamada</span>`:''}${fav?`<span>❤ ${esc(GNAME[fav.g])}</span>`:''}${champ?`<span>👑 ${champ} sezon şampiyonluğu</span>`:''}${joined?`<span>${joined}'den beri</span>`:''}${d.me?'<span style="border-color:var(--gold)">Bu sensin</span>':''}${d.uid&&typeof FIXED_ADMIN_UIDS!=='undefined'&&FIXED_ADMIN_UIDS.includes(d.uid)?'<span style="border-color:var(--gold);color:var(--gold)">👑 Yönetici</span>':''}</div></div></div>
       <div class="pp-stats">
         <div><b>${(d.sp!=null?d.sp:(d.points||0)).toLocaleString('tr-TR')}</b><span>${d.sp!=null?'Sezon puanı':'Toplam puan'}</span></div>
+        <div><b>${(d.wp||0).toLocaleString('tr-TR')}</b><span>Hafta puanı</span></div>
+        <div><b>${(d.coins||0).toLocaleString('tr-TR')}</b><span>Coin</span></div>
         <div><b>${(d.points||0).toLocaleString('tr-TR')}</b><span>Tüm zamanlar puanı</span></div>
         <div><b>${(stt.games||d.games||0).toLocaleString('tr-TR')}</b><span>Oynanan oyun</span></div>
         <div><b>${stt.cardWins||0}</b><span>Kart maçı galibiyeti</span></div>
@@ -4919,7 +4924,7 @@ function pickHeroes(){ const r=freshFirst(HEROES,h=>h.ad,'mt_seenh').slice(0,3);
       if(!(FB.ready&&FB.user)) return;
       FB.db.collection('users').doc(FB.user.uid).get().then(sn=>{
         const d=sn.exists?sn.data():{};
-        set('acSp',d.sp); set('acWp',d.wp); set('acPts',Math.max(d.points||0,d.sp||0,d.wp||0));
+        set('acSp',d.sp); set('acWp',d.wp); set('acCoin',d.coins); set('acPts',Math.max(d.points||0,d.sp||0,d.wp||0));
       }).catch(()=>{});
     };
   }
@@ -5529,7 +5534,7 @@ const INV_CSS=`
     mem:{n:'Kahraman Hafızası',ic:'🧠',d:'Herkes aynı kart dizilimini çözer. İlk bitiren ve en az hamle yapan kazanır.'}};
   const nm=()=>(AUTH.user&&(AUTH.user.display||AUTH.user.username))||(()=>{ try{ return localStorage.getItem('mt_name')||''; }catch(e){ return ''; } })()||'Misafir';
   let R=null; // oda durumu
-  function leave(){ if(!R) return; try{ R.conn&&R.conn.close(); }catch(e){} try{ R.peer&&R.peer.destroy(); }catch(e){} (R.timers||[]).forEach(clearTimeout); clearInterval(R.iv); R=null; }
+  function leave(){ if(!R) return; try{ R.conn&&R.conn.close(); }catch(e){} try{ R.peer&&R.peer.destroy(); }catch(e){} (R.timers||[]).forEach(clearTimeout); clearInterval(R.iv); unpubRoom(); R=null; }
   const send=m=>{ if(!R) return; if(R.host){ Object.values(R.conns).forEach(c=>{ try{ c.open&&c.send(m); }catch(e){} }); onMsg(m,'H'); } else { try{ R.conn&&R.conn.open&&R.conn.send(m); }catch(e){} } };
   const toHost=m=>{ if(!R) return; if(R.host) hostMsg(m,'H'); else { try{ R.conn&&R.conn.open&&R.conn.send(m); }catch(e){} } };
   const later=(f,ms)=>{ const t=setTimeout(f,ms); R&&R.timers.push(t); };
@@ -5540,16 +5545,18 @@ const INV_CSS=`
       <button class="opt" type="button" id="onSolo">🎯 Tek başına oyna<small>Klasik mod, puanını sıralamaya yaz.</small></button>
       <button class="opt" type="button" id="onHost">🌐 Online oda kur<small>Kodu arkadaşlarına ver, 2–8 kişi aynı anda yarışın.</small></button>
       <button class="opt" type="button" id="onJoin">🔑 Odaya katıl<small>Arkadaşının verdiği 5 harfli kodu yaz.</small></button>
+      <div id="onRooms" data-g="${game}"></div>
       ${AUTH.user?'':`<input class="field" id="onName" maxlength="18" placeholder="Online için adın" value="${esc(nm()==='Misafir'?'':nm())}">`}</div>`);
     const nameOk=()=>{ const f=$('#onName'); if(f){ const v=f.value.trim(); if(!v){ f.focus(); toast('Adını yaz','Online oyunda diğerleri seni bu isimle görecek.'); return false; } try{ localStorage.setItem('mt_name',v); }catch(e){} } return true; };
     $('#onSolo').onclick=()=>{ SFX.play('click'); if(window.__isGuest&&window.__isGuest()) guestWarn(solo); else solo(); };
     $('#onHost').onclick=()=>{ if(!nameOk()) return; if(typeof Peer!=='function') return toast('Online açılamadı','Bağlantı kütüphanesi yüklenemedi, internetini kontrol et.'); SFX.play('click'); host(game); };
-    $('#onJoin').onclick=()=>{ if(!nameOk()) return; SFX.play('click'); joinForm(game); }; }
+    $('#onJoin').onclick=()=>{ if(!nameOk()) return; SFX.play('click'); joinForm(game); };
+    listenOnRooms(); drawOnRooms(); }
 
   /* ---------- oda kurma / katılma ---------- */
   function host(game){ leave(); R={host:true,game,code:randCode(),conns:{},players:[{id:'H',name:nm(),score:0,prog:0,done:false}],timers:[],phase:'lobby'};
     cleanup=()=>leave();
-    const mk=tries=>{ const p=new Peer('mtg-'+R.code.toLowerCase()); R.peer=p;
+    const mk=tries=>{ const p=new Peer('mtg-'+R.game+'-'+R.code.toLowerCase()); R.peer=p;
       p.on('open',()=>lobby());
       p.on('error',e=>{ if(e.type==='unavailable-id'&&tries<4){ try{p.destroy();}catch(_){} R.code=randCode(); mk(tries+1); } else toast('Bağlantı hatası',String(e.type||e)); });
       p.on('connection',c=>{ c.on('data',m=>hostMsg(m,c.peer,c)); c.on('close',()=>{ if(!R) return; delete R.conns[c.peer]; const pl=R.players.find(x=>x.id===c.peer); R.players=R.players.filter(x=>x.id!==c.peer); if(pl) send({t:'sys',x:pl.name+' ayrıldı'}); send({t:'pl',p:R.players}); pubRoom(); }); }); };
@@ -5559,15 +5566,31 @@ const INV_CSS=`
   function join(game,code){ if(typeof Peer!=='function') return toast('Bağlanılamadı','Bağlantı kütüphanesi yüklenemedi.'); leave();
     R={host:false,game,code,timers:[],players:[],phase:'lobby'}; cleanup=()=>leave(); swap(`<p class="dim" style="text-align:center">${code} odasına bağlanılıyor…</p>`);
     const p=new Peer(); R.peer=p;
-    p.on('open',id=>{ R.me=id; const c=p.connect('mtg-'+code.toLowerCase(),{reliable:true}); R.conn=c;
+    p.on('open',id=>{ R.me=id; const c=p.connect('mtg-'+game+'-'+code.toLowerCase(),{reliable:true}); R.conn=c;
       c.on('open',()=>c.send({t:'hi',name:nm()})); c.on('data',m=>onMsg(m)); c.on('close',()=>{ if(R&&R.phase!=='end'){ toast('Bağlantı koptu','Oda kurucusu çıkmış olabilir.'); leave(); closeModal(); } }); });
     p.on('error',e=>{ toast(e.type==='peer-unavailable'?'Oda bulunamadı':'Bağlantı hatası',e.type==='peer-unavailable'?'Kodu kontrol et.':String(e.type||e)); leave(); joinForm(game); }); }
   const myId=()=>R&&(R.host?'H':R.me);
 
+  /* ---------- herkese açık odalar (Firestore rooms) ---------- */
+  let ONROOMS=[], onUnsub=null, myOnDoc=null, onHb=null;
+  const onTag=g=>'on-'+g;
+  const ost=document.createElement('style'); ost.textContent='.ono-lb{display:flex;align-items:center;justify-content:space-between;margin:16px 0 6px}.ono-lb span{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--gold)}.ono-r{display:flex;align-items:center;gap:10px;background:var(--s2);border:3px solid var(--inkc);border-radius:8px;padding:8px 10px;margin-bottom:6px}.ono-r .tx{flex:1;min-width:0}.ono-r .tx b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ono-r .tx small{color:var(--dim);font-size:12px}'; document.head.appendChild(ost);
+  function listenOnRooms(){ if(onUnsub||!FB.ready) return; onUnsub=FB.db.collection('rooms').where('status','==','lobby').onSnapshot(q=>{ ONROOMS=q.docs.map(d=>({id:d.id,...d.data()})); drawOnRooms(); },()=>{}); }
+  function drawOnRooms(){ listenOnRooms(); const box=$('#onRooms'); if(!box) return; const g=box.dataset.g;
+    const list=ONROOMS.filter(r=>r.game===onTag(g)&&(!r.updated||!r.updated.toDate||Date.now()-r.updated.toDate()<150000)&&((r.players||1)<8)&&(!FB.user||r.host!==FB.user.uid));
+    box.innerHTML=`<div class="ono-lb"><span>🌍 AÇIK ODALAR</span><button class="ghost" type="button" id="onRef" style="padding:2px 10px;font-size:12px">↻</button></div>`+(list.length?list.map(r=>`<div class="ono-r"><span style="font-size:22px">🎮</span><div class="tx"><b>${esc(r.hostName||'Oyuncu')}</b><small>${esc(GAMES[g].n)} · Kod: ${esc(r.code)} · ${(r.players||1)}/8</small></div><button class="btn p sm" type="button" data-join="${esc(r.code)}"><span class="bl"><span>Katıl</span><span>Katıl</span></span></button></div>`).join(''):'<p class="dim" style="margin:4px 0 0;font-size:13px">Açık oda yok — "Online oda kur" de, kodu herkes görsün!</p>');
+    const rf=$('#onRef'); rf&&(rf.onclick=()=>{SFX.play('click');drawOnRooms();});
+    $$('[data-join]',box).forEach(b=>b.onclick=()=>{ SFX.play('click'); join(g,b.dataset.join); }); }
+  function pubRoom(){ if(!R||!R.host||!(FB.ready&&FB.user)) return; const u=AUTH.user||{};
+    FB.db.collection('rooms').doc('og-'+R.game+'-'+R.code).set({code:R.code,game:onTag(R.game),host:FB.user.uid,hostName:u.display||u.username||'Oyuncu',players:R.players.length,max:8,status:R.phase==='lobby'?'lobby':'playing',updated:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).then(()=>{myOnDoc='og-'+R.game+'-'+R.code;}).catch(()=>{});
+    clearInterval(onHb); onHb=setInterval(pubRoom,40000); }
+  function unpubRoom(){ clearInterval(onHb); onHb=null; if(myOnDoc&&FB.ready){ const id=myOnDoc; myOnDoc=null; FB.db.collection('rooms').doc(id).delete().catch(()=>{}); } }
+  addEventListener('pagehide',()=>{ if(myOnDoc&&FB.ready) FB.db.collection('rooms').doc(myOnDoc).delete().catch(()=>{}); });
+
   /* ---------- kurucu: gelen mesajlar ---------- */
   function hostMsg(m,from,c){ if(!R||!R.host) return;
     if(m.t==='hi'){ if(R.phase!=='lobby'||R.players.length>=8){ try{ c.send({t:'full'}); }catch(e){} return; } R.conns[from]=c; R.players.push({id:from,name:String(m.name||'Oyuncu').slice(0,18),score:0,prog:0,done:false});
-      try{ c.send({t:'hello',game:R.game,code:R.code,you:from}); }catch(e){} send({t:'pl',p:R.players}); send({t:'sys',x:m.name+' katıldı'}); SFX.sfx&&SFX.sfx('join'); return; }
+      try{ c.send({t:'hello',game:R.game,code:R.code,you:from}); }catch(e){} send({t:'pl',p:R.players}); send({t:'sys',x:m.name+' katıldı'}); SFX.sfx&&SFX.sfx('join'); pubRoom(); return; }
     if(m.t==='sc'){ const pl=R.players.find(x=>x.id===from); if(!pl) return; pl.score=Math.max(-500,Math.min(5000,+m.score||0)); pl.prog=+m.prog||0; pl.done=!!m.done; if(m.extra) pl.extra=m.extra;
       if(m.solved!=null) (R.solved=R.solved||{})[m.solved]=(R.solved[m.solved]||[]).concat(from);
       send({t:'pl',p:R.players}); if(R.players.every(x=>x.done)) finishRoom(); } }
@@ -5589,7 +5612,7 @@ const INV_CSS=`
       <div class="on-pl">${R.players.map(p=>`<div>${p.id==='H'?'👑':'🎮'} <span>${esc(p.name)}</span>${p.id===myId()?'<small class="mono">sen</small>':''}</div>`).join('')}</div>
       ${R.host?`<div class="rowb" style="justify-content:center"><button class="ghost" id="onCopy" type="button">Kodu kopyala</button><button class="btn p" id="onStart" type="button" ${R.players.length<2?'disabled':''}><span class="bl"><span>Başlat (${R.players.length})</span><span>Başlat (${R.players.length})</span></span></button></div>${R.players.length<2?'<p class="dim" style="text-align:center;margin:0;font-size:13px">Başlatmak için en az 2 kişi lazım.</p>':''}`:'<p class="dim" style="text-align:center">Kurucunun başlatmasını bekliyorsun…</p>'}</div>`);
     const cp=$('#onCopy'); cp&&(cp.onclick=()=>{ navigator.clipboard&&navigator.clipboard.writeText(R.code).then(()=>toast('Kopyalandı','Oda kodu panoda.')).catch(()=>{}); });
-    const s=$('#onStart'); s&&(s.onclick=()=>{ if(R.players.length<2) return; SFX.play('click'); startRoom(); }); }
+    const s=$('#onStart'); s&&(s.onclick=()=>{ if(R.players.length<2) return; SFX.play('click'); startRoom(); }); pubRoom(); }
 
   /* ---------- oyun içeriğini kurucu üretir ---------- */
   function startRoom(){ let data;
@@ -5598,11 +5621,11 @@ const INV_CSS=`
       data={qs:shuffle([...shuffle(REAL).slice(0,5).map(ad=>({ad,ok:1})),...shuffle(FAKE_POOL).slice(0,5).map(ad=>({ad,ok:0}))])}; }
     if(R.game==='mem'){ const ids=shuffle(HEROES_CG.map(h=>h.id)).slice(0,8); data={cards:shuffle([...ids,...ids])}; }
     R.players.forEach(p=>{ p.score=0; p.prog=0; p.done=false; }); R.solved={};
-    send({t:'go',data}); }
+    send({t:'go',data}); pubRoom(); }
   function report(score,prog,done,extra){ toHost({t:'sc',score:Math.round(score),prog,done,extra}); }
   function board(){ const b=$('#onLb'); if(!b||!R) return; const ps=[...R.players].sort((a,b)=>b.score-a.score);
     b.innerHTML=ps.map((p,i)=>`<div class="${p.id===myId()?'me':''}${p.done?' done':''}"><span class="mono">${i+1}.</span><span>${esc(p.name)}${p.done?' ✓':''}</span><b>${p.score}</b><span class="on-bar"><i style="width:${Math.round((p.prog||0)*100)}%"></i></span></div>`).join(''); }
-  function finishRoom(){ if(!R||!R.host||R.phase==='end') return; R.phase='end'; const p=[...R.players].sort((a,b)=>b.score-a.score); send({t:'end',p}); }
+  function finishRoom(){ if(!R||!R.host||R.phase==='end') return; R.phase='end'; unpubRoom(); const p=[...R.players].sort((a,b)=>b.score-a.score); send({t:'end',p}); }
   function results(ps){ const me=ps.find(p=>p.id===myId()), rank=ps.findIndex(p=>p.id===myId())+1, win=rank===1;
     const pts=Math.max(-300,Math.min(1500,Math.round((me?me.score:0)+(win&&ps.length>1?200:0))));
     if(pts) submitScore(R.game,pts);
