@@ -292,7 +292,10 @@ function renderUser(){
   const slot=$('#authSlot'), u=AUTH.user;
   if(u&&FB.ready&&!FB.user&&!u.guest){ AUTH.user=null; try{localStorage.removeItem('mt_user')}catch(e){} }
   if(!AUTH.user){slot.innerHTML=`<button class="login" id="loginBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5M10 16l4-4-4-4M14 12H3"/></svg><span class="lt">Giriş yap</span></button>`; $('#loginBtn').onclick=openLogin; return;}
-  slot.innerHTML=`<button class="chip" id="chipBtn" type="button" aria-label="Hesabım">${avatarHTML(u)}<span class="cn"><b class="${window.ncOf?ncOf(u):''}">${esc(u.display||u.username)}</b><small class="${u.micup||u.google?'vf':'pv'}">${u.micup?'● Micup':u.google?'● Google':'● Misafir'} · ${((typeof FB!=='undefined'&&FB.ready&&FB.user&&typeof FB.myPts==='number')?FB.myPts:myTotal()).toLocaleString('tr-TR')} puan</small></span></button>`;
+  const __hud=window.__myHud||null, __pts=((typeof FB!=='undefined'&&FB.ready&&FB.user&&typeof FB.myPts==='number')?FB.myPts:myTotal()).toLocaleString('tr-TR');
+  let __coins=''; try{ const __cc=(__hud?__hud.coins:(prog().coins||0)); if(__cc) __coins=' · '+__cc.toLocaleString('tr-TR')+' coin'; }catch(e){}
+  const __sub=__hud?('Sezon '+__hud.sp.toLocaleString('tr-TR')+' · Hafta '+__hud.wp.toLocaleString('tr-TR')):(__pts+' puan');
+  slot.innerHTML=`<button class="chip" id="chipBtn" type="button" aria-label="Hesabım">${avatarHTML(u)}<span class="cn"><b class="${window.ncOf?ncOf(u):''}">${esc(u.display||u.username)}</b><small class="${u.micup||u.google?'vf':'pv'}">${u.micup?'● Micup':u.google?'● Google':'● Misafir'} · ${__sub}${__coins}</small></span></button>`;
   $('#chipBtn').onclick=openAccount;
 }
 const micupMark=`<svg viewBox="0 0 44 44" aria-hidden="true"><rect x="1.5" y="1.5" width="41" height="41" rx="6" fill="#15151F" stroke="#07060b" stroke-width="3"/><path d="M12 30V16l10 9 10-9v14" fill="none" stroke="#EEEAE2" stroke-width="3"/></svg>`;
@@ -713,13 +716,23 @@ document.addEventListener('touchend',e=>{if(!modal.hidden||!st) return; const t=
 
 /* ========================= Oyunlar ========================= */
 const GN={guess:'Ben Kimim?',quiz:'Bilgi Yarışması',hl:'Yüksek mi Düşük mü',mem:'Kahraman Hafızası',real:'Gerçek mi Sahte mi?'};
+window.__isGuest=()=>!AUTH.user||AUTH.user.guest||!AUTH.user.micup||!(FB.ready&&FB.user);
+function guestWarn(fn){
+  openModal('Misafir Modu');
+  swap('<div style="text-align:center;padding:8px 0"><div style="font-size:44px;line-height:1;margin-bottom:8px">⚠️</div><h3 style="margin:0 0 10px">Misafir olarak oynuyorsun</h3>'+'<p class="dim" style="margin:0 0 8px">Puanların <b>sıralama tablolarına yazılmayacak</b> — ilk sırada bitirsen bile yalnızca site içi ödüller kazanırsın.</p>'+'<p class="dim" style="margin:0 0 8px">Micup hesabını bağlarsan puanların kalıcı olarak kaydedilir ve Discord sunucumuzda <b>özel roller</b> kazanabilirsin.</p>'+'<p class="dim" style="margin:0 0 16px;font-size:13px">E-posta istemiyoruz — tek yapman gereken Micup hesabınla giriş yapmak.</p>'+'<div class="rowb" style="justify-content:center;gap:10px;flex-wrap:wrap"><button class="btn p" id="gwIn" type="button"><span class="bl"><span>Micup ile giriş yap</span><span>Micup ile giriş yap</span></span></button><button class="ghost" id="gwGo" type="button">Yine de oyna</button></div>'+'<button class="ghost" id="gwNo" type="button" style="margin-top:10px;font-size:12px">Vazgeç</button></div>');
+  const inB=$('#gwIn'),goB=$('#gwGo'),noB=$('#gwNo');
+  if(inB)inB.onclick=()=>{SFX.play('click');closeModal();openLogin();};
+  if(goB)goB.onclick=()=>{SFX.play('click');closeModal();setTimeout(fn,300);};
+  if(noB)noB.onclick=()=>{SFX.play('click');closeModal();};
+}
 function confirmGame(g,fn){
+  if(window.__isGuest()){ guestWarn(fn); return; }
   openModal(GN[g]||'Oyun');
   const guest=!AUTH.user||AUTH.user.guest||!AUTH.user.micup||!(FB.ready&&FB.user);
-  swap('<div style="text-align:center;padding:8px 0"><p class="dim" style="margin:0 0 12px">Oyun başlasın mı? Kuralları modalın içinde göreceksin.</p>'+(guest?'<p style="margin:0 0 14px;color:var(--gold);font-weight:700">⚠ Micup bağlı değilsin — puanların sıralamaya yazılmayabilir. Sağ üstteki giriş butonundan bağlanabilirsin.</p>':'')+'<div class="rowb" style="justify-content:center;gap:10px"><button class="ghost" id="cgNo" type="button">Vazgeç</button><button class="btn p" id="cgYes" type="button"><span class="bl"><span>Başla</span><span>Başla</span></span></button></div></div>');
+  swap('<div style="text-align:center;padding:8px 0"><p class="dim" style="margin:0 0 12px">Oyun başlasın mı? Kuralları modalın içinde göreceksin.</p>'+'<div class="rowb" style="justify-content:center;gap:10px"><button class="ghost" id="cgNo" type="button">Vazgeç</button><button class="btn p" id="cgYes" type="button"><span class="bl"><span>Başla</span><span>Başla</span></span></button></div></div>');
   const no=$('#cgNo'),yes=$('#cgYes'); if(no)no.onclick=()=>{SFX.play('click');closeModal();}; if(yes)yes.onclick=()=>{SFX.play('click');closeModal();setTimeout(fn,1000);};
 }
-$$('[data-game]').forEach(c=>c.addEventListener('click',()=>{SFX.play('click'); const g=c.dataset.game; const fn={guess:startGuess,quiz:startQuiz,hl:startHL,mem:startMemory,real:startReal,cards:()=>CG.open()}[g]; if(!fn) return; if(g==='cards'){ fn(); } else confirmGame(g,fn); }));
+$$('[data-game]').forEach(c=>c.addEventListener('click',()=>{SFX.play('click'); const g=c.dataset.game; const fn={guess:startGuess,quiz:startQuiz,hl:startHL,mem:startMemory,real:startReal,cards:()=>{ if(window.__isGuest&&window.__isGuest()) guestWarn(()=>CG.open()); else CG.open(); }}[g]; if(!fn) return; if(g==='cards'){ if(window.__isGuest()) guestWarn(fn); else fn(); } else confirmGame(g,fn); }));
 const norm=s=>s.toLocaleLowerCase('tr').replace(/ı/g,'i').replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u').replace(/[^a-z0-9]/g,'');
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;};
 const HEROES=[
@@ -2423,7 +2436,7 @@ const RAVO=(()=>{
   const W=$('#ravo'), LOG=$('#ravoLog'), F=$('#ravoForm'), IN=$('#ravoIn'), BTN=$('#ravoBtn');
   const n=s=>s.toLocaleLowerCase('tr').replace(/ı/g,'i').replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u');
   const goView=v=>()=>{ if(location.hash!=='#'+v) history.replaceState(null,'','#'+v); go(v); close(); };
-  const openGame=g=>()=>{ close(); const fn={guess:startGuess,quiz:startQuiz,hl:startHL,mem:startMemory,real:startReal,cards:()=>CG.open()}[g]; if(fn){ if(g==='cards') fn(); else confirmGame(g,fn); } };
+  const openGame=g=>()=>{ close(); const fn={guess:startGuess,quiz:startQuiz,hl:startHL,mem:startMemory,real:startReal,cards:()=>{ if(window.__isGuest&&window.__isGuest()) guestWarn(()=>CG.open()); else CG.open(); }}[g]; if(fn){ if(g==='cards') fn(); else confirmGame(g,fn); } };
   const A={ana:['Ana sayfaya git',goView('ana')],oyunlar:['Oyunlara git',goView('oyunlar')],siralama:['Sıralamaya git',goView('siralama')],
     cards:['Kahraman Kartları\'nı aç',openGame('cards')],guess:['Ben Kimim?\'i aç',openGame('guess')],quiz:['Bilgi Yarışması\'nı aç',openGame('quiz')],
     hl:['Yüksek mi Düşük mü\'yü aç',openGame('hl')],mem:['Hafıza\'yı aç',openGame('mem')],real:['Gerçek mi Sahte mi?\'i aç',openGame('real')],
@@ -3957,6 +3970,7 @@ function pickHeroes(){ const r=freshFirst(HEROES,h=>h.ad,'mt_seenh').slice(0,3);
     b.innerHTML='<span class="bl"><span>👥 Arkadaşını davet et · +500</span><span>👥 Arkadaşını davet et · +500</span></span>'; b.onclick=()=>{ SFX.play('click'); openInvite(); };
     const after=$('.accach',lg)||$('.accol',lg)||$('ul',lg); after?after.after(b):lg.appendChild(b); };
 
+  (function hud(){ if(FB.ready&&FB.auth){ FB.auth.onAuthStateChanged(u=>{ if(!u){window.__myHud=null;return;} try{ FB.db.collection('users').doc(u.uid).onSnapshot(s=>{ const d=s.exists?s.data():{}; window.__myHud={sp:d.sp||0,wp:d.wp||0,coins:d.coins||0,points:d.points||0}; renderUser(); },()=>{}); }catch(e){} }); } else setTimeout(hud,800); })();
   (function w(){ if(FB.ready&&FB.auth){ FB.auth.onAuthStateChanged(u=>{ if(!u) return; wkP=null; ensureWeek(); setTimeout(()=>{ useRef(); claimInvites(); },3000); setTimeout(weekly,3500); }); } else setTimeout(w,800); })();
 })();
 
@@ -5528,7 +5542,7 @@ const INV_CSS=`
       <button class="opt" type="button" id="onJoin">🔑 Odaya katıl<small>Arkadaşının verdiği 5 harfli kodu yaz.</small></button>
       ${AUTH.user?'':`<input class="field" id="onName" maxlength="18" placeholder="Online için adın" value="${esc(nm()==='Misafir'?'':nm())}">`}</div>`);
     const nameOk=()=>{ const f=$('#onName'); if(f){ const v=f.value.trim(); if(!v){ f.focus(); toast('Adını yaz','Online oyunda diğerleri seni bu isimle görecek.'); return false; } try{ localStorage.setItem('mt_name',v); }catch(e){} } return true; };
-    $('#onSolo').onclick=()=>{ SFX.play('click'); solo(); };
+    $('#onSolo').onclick=()=>{ SFX.play('click'); if(window.__isGuest&&window.__isGuest()) guestWarn(solo); else solo(); };
     $('#onHost').onclick=()=>{ if(!nameOk()) return; if(typeof Peer!=='function') return toast('Online açılamadı','Bağlantı kütüphanesi yüklenemedi, internetini kontrol et.'); SFX.play('click'); host(game); };
     $('#onJoin').onclick=()=>{ if(!nameOk()) return; SFX.play('click'); joinForm(game); }; }
 
