@@ -3994,7 +3994,7 @@ function pickHeroes(){ const r=freshFirst(HEROES,h=>h.ad,'mt_seenh').slice(0,3);
 
   /* ---------- İLK 50 MİCUP ÜYESİ ÖDÜLÜ ---------- */
   (function earlyBird(){
-    const LIM=50; let busy=false;
+    const LIM=50; let busy=false, fails=0;
     async function check(){
       if(busy||!(FB.ready&&FB.user)||!AUTH.user||!AUTH.user.micup||!FB.db) return; busy=true;
       try{
@@ -4011,11 +4011,12 @@ function pickHeroes(){ const r=freshFirst(HEROES,h=>h.ad,'mt_seenh').slice(0,3);
           const count=s.exists?(s.data().count||0):0;
           if(ids.includes(uid)) return {n:ids.indexOf(uid)+1,reward:true};
           if(count>=LIM) return {n:count+1,reward:false};
-          t.set(ctr,{count:count+1,ids:[...ids,uid]},{merge:true});
+          t.set(ctr,{count:count+1,ids:[...ids,uid]});
           return {n:count+1,reward:true};
         });
-        const mark={early:true,earlyN:res.n,earlyAt:firebase.firestore.FieldValue.serverTimestamp()};
+        const mark={earlyN:res.n,earlyAt:firebase.firestore.FieldValue.serverTimestamp()};
         if(res.reward){
+          mark.early=true;
           const s=prog(); if(!s.inv||typeof s.inv!=='object') s.inv={boxes:{},packs:{}};
           if(!s.inv.boxes||typeof s.inv.boxes!=='object') s.inv.boxes={}; if(!s.inv.packs) s.inv.packs={};
           s.inv.boxes.luck=(s.inv.boxes.luck||0)+1; s.inv.packs.sup=(s.inv.packs.sup||0)+1; s.coins=(s.coins||0)+250;
@@ -4023,7 +4024,7 @@ function pickHeroes(){ const r=freshFirst(HEROES,h=>h.ad,'mt_seenh').slice(0,3);
           setTimeout(()=>{ try{ SFX.play('win'); burst&&burst(true); }catch(e){} toast('İlk 50 üyeden birisin!','Şans Kutusu + Süper Paket + 250 coin kazandın — Envanter\'den açabilirsin.'); openModal('Erken üyelik ödülü'); },2600);
         } else mark.earlyChecked=true;
         await ref.set(mark,{merge:true}).catch(()=>{});
-      }catch(e){ console.warn('earlyBird',e); busy=false; setTimeout(w,8000); return; }
+      }catch(e){ console.warn('earlyBird',e); busy=false; if(++fails<5) setTimeout(w,8000); return; }
       busy=false;
     }
     const w=()=>{ if(FB.ready&&FB.user&&AUTH.user&&AUTH.user.micup) check(); else setTimeout(w,900); };
