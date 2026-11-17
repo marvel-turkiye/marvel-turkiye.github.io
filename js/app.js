@@ -3987,9 +3987,48 @@ function pickHeroes(){ const r=freshFirst(HEROES,h=>h.ad,'mt_seenh').slice(0,3);
         if(best) await FB.db.collection('announcements').add({title:`⭐ Haftanın Marvel'ı: ${best.name}`,pinned:false,text:`Geçen haftayı ${best.wp.toLocaleString('tr-TR')} puanla birinci bitirdi. Tebrikler!\nYeni hafta başladı, bu hafta sıra sende.`,by:FB.user.uid,byName:'Marvel Türkiye',created:firebase.firestore.FieldValue.serverTimestamp()});
         d=await ref.get(); }
       if(!d.exists) return; wkWinner=d.data().winner||null; renderRole(); renderBoards();
+      try{ const wk='mt_wrole_'+prev.id; if(wkWinner&&wkWinner.uid&&!localStorage.getItem(wk)){ localStorage.setItem(wk,'1'); fetch(MICUP_CONFIG.tokenProxy+'?wrole='+encodeURIComponent(prev.id)+'&callback=cb',{cache:'no-store'}).catch(()=>{}); } }catch(e){}
       if(wkWinner&&wkWinner.uid===FB.user.uid){ const s=prog(); s.wkWon=s.wkWon||{}; if(!s.wkWon[prev.id]){ s.wkWon[prev.id]=1; saveProg(s);
         setTimeout(()=>{ const s2=prog(); s2.coins=(s2.coins||0)+250; giveFrame('wk'); saveProg(s2); const c=[pickHero('a')]; SFX.play('win'); burst&&burst(true); toast('Haftanın Marvel\'ı sensin!','250 coin, şampiyon çerçevesi ve epik kart kazandın.'); openModal('Haftanın Marvel\'ı'); packOpen(c); },2000); } }
     }catch(e){ console.warn('Hafta kapatılamadı',e); } }
+
+  /* ---------- İLK 50 MİCUP ÜYESİ ÖDÜLÜ ---------- */
+  (function earlyBird(){
+    const LIM=50; let busy=false;
+    async function check(){
+      if(busy||!(FB.ready&&FB.user)||!AUTH.user||!AUTH.user.micup||!FB.db) return; busy=true;
+      try{
+        const uid=FB.user.uid, ref=FB.db.collection('users').doc(uid);
+        const d=await ref.get({source:'server'});
+        const dat=d.exists?d.data():{};
+        if(dat.early||dat.earlyChecked) return;
+        const isNew=!d.exists||!(dat.points!=null||dat.sp!=null||dat.wp!=null||dat.joined||dat.inv||dat.cards||dat.games!=null);
+        if(!isNew){ await ref.set({earlyChecked:true},{merge:true}).catch(()=>{}); return; }
+        const ctr=FB.db.collection('stats').doc('earlyBirds');
+        const res=await FB.db.runTransaction(async t=>{
+          const s=await t.get(ctr);
+          const ids=s.exists?(s.data().ids||[]):[];
+          const count=s.exists?(s.data().count||0):0;
+          if(ids.includes(uid)) return {n:ids.indexOf(uid)+1,reward:true};
+          if(count>=LIM) return {n:count+1,reward:false};
+          t.set(ctr,{count:count+1,ids:[...ids,uid]},{merge:true});
+          return {n:count+1,reward:true};
+        });
+        const mark={early:true,earlyN:res.n,earlyAt:firebase.firestore.FieldValue.serverTimestamp()};
+        if(res.reward){
+          const s=prog(); if(!s.inv||typeof s.inv!=='object') s.inv={boxes:{},packs:{}};
+          if(!s.inv.boxes||typeof s.inv.boxes!=='object') s.inv.boxes={}; if(!s.inv.packs) s.inv.packs={};
+          s.inv.boxes.luck=(s.inv.boxes.luck||0)+1; s.inv.packs.sup=(s.inv.packs.sup||0)+1; s.coins=(s.coins||0)+250;
+          saveProg(s); mark.inv=s.inv; mark.coins=s.coins;
+          setTimeout(()=>{ try{ SFX.play('win'); burst&&burst(true); }catch(e){} toast('İlk 50 üyeden birisin!','Şans Kutusu + Süper Paket + 250 coin kazandın — Envanter\'den açabilirsin.'); openModal('Erken üyelik ödülü'); },2600);
+        } else mark.earlyChecked=true;
+        await ref.set(mark,{merge:true}).catch(()=>{});
+      }catch(e){ console.warn('earlyBird',e); busy=false; setTimeout(w,8000); return; }
+      busy=false;
+    }
+    const w=()=>{ if(FB.ready&&FB.user&&AUTH.user&&AUTH.user.micup) check(); else setTimeout(w,900); };
+    w();
+  })();
 
   /* ---------- RAVONİA GAME ---------- */
   const sm=$('.brand small'); if(sm){ sm.innerHTML=`<span class="rvlink" title="RAVONİA GAME oyunları">RAVONİA GAME</span> · ${SEASON().label}`;
