@@ -5680,7 +5680,7 @@ const INV_CSS=`
     const mk=tries=>{ const p=new Peer('mtg-'+R.game+'-'+R.code.toLowerCase()); R.peer=p;
       p.on('open',()=>lobby());
       p.on('error',e=>{ if(e.type==='unavailable-id'&&tries<4){ try{p.destroy();}catch(_){} R.code=randCode(); mk(tries+1); } else toast('Bağlantı hatası',String(e.type||e)); });
-      p.on('connection',c=>{ c.on('data',m=>hostMsg(m,c.peer,c)); c.on('close',()=>{ if(!R) return; delete R.conns[c.peer]; const pl=R.players.find(x=>x.id===c.peer); R.players=R.players.filter(x=>x.id!==c.peer); if(pl) send({t:'sys',x:pl.name+' ayrıldı'}); send({t:'pl',p:R.players}); pubRoom(); }); }); };
+      p.on('connection',c=>{ c.on('data',m=>hostMsg(m,c.peer,c)); c.on('close',()=>{ if(!R) return; delete R.conns[c.peer]; const pl=R.players.find(x=>x.id===c.peer); if(pl&&!pl.left){ pl.left=true; send({t:'sys',x:pl.name+' ayrıldı'}); send({t:'pl',p:R.players}); pubRoom(); } }); }); };
     mk(0); swap('<p class="dim" style="text-align:center">Oda açılıyor…</p>'); }
   function joinForm(game){ swap(`<div class="on-pick"><p style="margin:0">Arkadaşının verdiği oda kodunu yaz:</p><form class="guess" id="onJf"><input class="field code-in" id="onCode" maxlength="5" placeholder="ABCDE" autocomplete="off" style="text-transform:uppercase"><button class="btn p" type="submit"><span class="bl"><span>Katıl</span><span>Katıl</span></span></button></form></div>`);
     $('#onCode').focus(); $('#onJf').onsubmit=e=>{ e.preventDefault(); const c=$('#onCode').value.trim().toUpperCase(); if(c.length===5) join(game,c); }; }
@@ -5703,18 +5703,18 @@ const INV_CSS=`
     const rf=$('#onRef'); rf&&(rf.onclick=()=>{SFX.play('click');drawOnRooms();});
     $$('[data-join]',box).forEach(b=>b.onclick=()=>{ SFX.play('click'); join(g,b.dataset.join); }); }
   function pubRoom(){ if(!R||!R.host||!(FB.ready&&FB.user)) return; const u=AUTH.user||{};
-    FB.db.collection('rooms').doc('og-'+R.game+'-'+R.code).set({code:R.code,game:onTag(R.game),host:FB.user.uid,hostName:u.display||u.username||'Oyuncu',players:R.players.length,max:8,status:R.phase==='lobby'?'lobby':'playing',updated:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).then(()=>{myOnDoc='og-'+R.game+'-'+R.code;}).catch(()=>{});
+    FB.db.collection('rooms').doc('og-'+R.game+'-'+R.code).set({code:R.code,game:onTag(R.game),host:FB.user.uid,hostName:u.display||u.username||'Oyuncu',players:R.players.filter(p=>!p.left).length,max:8,status:R.phase==='lobby'?'lobby':'playing',updated:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).then(()=>{myOnDoc='og-'+R.game+'-'+R.code;}).catch(()=>{});
     clearInterval(onHb); onHb=setInterval(pubRoom,40000); }
   function unpubRoom(){ clearInterval(onHb); onHb=null; if(myOnDoc&&FB.ready){ const id=myOnDoc; myOnDoc=null; FB.db.collection('rooms').doc(id).delete().catch(()=>{}); } }
   addEventListener('pagehide',()=>{ if(myOnDoc&&FB.ready) FB.db.collection('rooms').doc(myOnDoc).delete().catch(()=>{}); });
 
   /* ---------- kurucu: gelen mesajlar ---------- */
   function hostMsg(m,from,c){ if(!R||!R.host) return;
-    if(m.t==='hi'){ if(R.phase!=='lobby'||R.players.length>=8){ try{ c.send({t:'full'}); }catch(e){} return; } R.conns[from]=c; R.players.push({id:from,name:String(m.name||'Oyuncu').slice(0,18),score:0,prog:0,done:false});
+    if(m.t==='hi'){ const act=R.players.filter(x=>!x.left); if(R.phase!=='lobby'||act.length>=8){ try{ c.send({t:'full'}); }catch(e){} return; } R.conns[from]=c; R.players.push({id:from,name:String(m.name||'Oyuncu').slice(0,18),score:0,prog:0,done:false});
       try{ c.send({t:'hello',game:R.game,code:R.code,you:from}); }catch(e){} send({t:'pl',p:R.players}); send({t:'sys',x:m.name+' katıldı'}); SFX.sfx&&SFX.sfx('join'); pubRoom(); return; }
     if(m.t==='sc'){ const pl=R.players.find(x=>x.id===from); if(!pl) return; pl.score=Math.max(-500,Math.min(5000,+m.score||0)); pl.prog=+m.prog||0; pl.done=!!m.done; if(m.extra) pl.extra=m.extra;
       if(m.solved!=null) (R.solved=R.solved||{})[m.solved]=(R.solved[m.solved]||[]).concat(from);
-      send({t:'pl',p:R.players}); if(R.players.every(x=>x.done)) finishRoom(); } }
+      send({t:'pl',p:R.players}); if(R.players.every(x=>x.done||x.left)) finishRoom(); } }
 
   /* ---------- herkes: gelen mesajlar ---------- */
   function onMsg(m){ if(!R) return;
@@ -5730,10 +5730,10 @@ const INV_CSS=`
   function lobby(){ if(!R) return; const g=GAMES[R.game];
     swap(`<div class="on-pick"><span class="mono dim" style="text-align:center">${g.ic} ${g.n} · ONLINE ODA</span><div class="on-code">${R.code}</div>
       <p class="dim" style="text-align:center;margin:0">Bu kodu arkadaşlarına gönder, "Odaya katıl" ile girsinler.</p>
-      <div class="on-pl">${R.players.map(p=>`<div>${p.id==='H'?'👑':'🎮'} <span>${esc(p.name)}</span>${p.id===myId()?'<small class="mono">sen</small>':''}</div>`).join('')}</div>
-      ${R.host?`<div class="rowb" style="justify-content:center"><button class="ghost" id="onCopy" type="button">Kodu kopyala</button><button class="btn p" id="onStart" type="button" ${R.players.length<2?'disabled':''}><span class="bl"><span>Başlat (${R.players.length})</span><span>Başlat (${R.players.length})</span></span></button></div>${R.players.length<2?'<p class="dim" style="text-align:center;margin:0;font-size:13px">Başlatmak için en az 2 kişi lazım.</p>':''}`:'<p class="dim" style="text-align:center">Kurucunun başlatmasını bekliyorsun…</p>'}</div>`);
+      <div class="on-pl">${R.players.map(p=>`<div${p.left?' style="opacity:.45"':''}>${p.id==='H'?'👑':'🎮'} <span>${esc(p.name)}${p.left?' <small class="mono" style="color:var(--red)">· ayrıldı</small>':''}</span>${p.id===myId()?'<small class="mono">sen</small>':''}</div>`).join('')}</div>
+      ${R.host?`<div class="rowb" style="justify-content:center"><button class="ghost" id="onCopy" type="button">Kodu kopyala</button><button class="btn p" id="onStart" type="button" ${R.players.filter(p=>!p.left).length<2?'disabled':''}><span class="bl"><span>Başlat (${R.players.filter(p=>!p.left).length})</span><span>Başlat (${R.players.filter(p=>!p.left).length})</span></span></button></div>${R.players.filter(p=>!p.left).length<2?'<p class="dim" style="text-align:center;margin:0;font-size:13px">Başlatmak için en az 2 kişi lazım.</p>':''}`:'<p class="dim" style="text-align:center">Kurucunun başlatmasını bekliyorsun…</p>'}</div>`);
     const cp=$('#onCopy'); cp&&(cp.onclick=()=>{ navigator.clipboard&&navigator.clipboard.writeText(R.code).then(()=>toast('Kopyalandı','Oda kodu panoda.')).catch(()=>{}); });
-    const s=$('#onStart'); s&&(s.onclick=()=>{ if(R.players.length<2) return; SFX.play('click'); startRoom(); }); pubRoom(); }
+    const s=$('#onStart'); s&&(s.onclick=()=>{ if(R.players.filter(p=>!p.left).length<2) return; SFX.play('click'); startRoom(); }); pubRoom(); }
 
   /* ---------- oyun içeriğini kurucu üretir ---------- */
   function startRoom(){ let data;
@@ -5741,11 +5741,11 @@ const INV_CSS=`
     if(R.game==='real'){ const EN={cap:'Captain America',cmarvel:'Captain Marvel',profx:'Professor X',msmarvel:'Ms. Marvel'}; const REAL=[...new Set(HEROES_CG.map(h=>EN[h.id]||h.ad).concat(REAL_EXTRA))];
       data={qs:shuffle([...shuffle(REAL).slice(0,5).map(ad=>({ad,ok:1})),...shuffle(FAKE_POOL).slice(0,5).map(ad=>({ad,ok:0}))])}; }
     if(R.game==='mem'){ const ids=shuffle(HEROES_CG.map(h=>h.id)).slice(0,8); data={cards:shuffle([...ids,...ids])}; }
-    R.players.forEach(p=>{ p.score=0; p.prog=0; p.done=false; }); R.solved={};
+    R.players=R.players.filter(p=>!p.left); R.players.forEach(p=>{ p.score=0; p.prog=0; p.done=false; }); R.solved={};
     send({t:'go',data}); pubRoom(); }
   function report(score,prog,done,extra){ toHost({t:'sc',score:Math.round(score),prog,done,extra}); }
   function board(){ const b=$('#onLb'); if(!b||!R) return; const ps=[...R.players].sort((a,b)=>b.score-a.score);
-    b.innerHTML=ps.map((p,i)=>`<div class="${p.id===myId()?'me':''}${p.done?' done':''}"><span class="mono">${i+1}.</span><span>${esc(p.name)}${p.done?' ✓':''}</span><b>${p.score}</b><span class="on-bar"><i style="width:${Math.round((p.prog||0)*100)}%"></i></span></div>`).join(''); }
+    b.innerHTML=ps.map((p,i)=>`<div class="${p.id===myId()?'me':''}${p.done?' done':''}${p.left?' left':''}"><span class="mono">${i+1}.</span><span>${esc(p.name)}${p.done?' ✓':''}${p.left?' · ayrıldı':''}</span><b>${p.score}</b><span class="on-bar"><i style="width:${Math.round((p.prog||0)*100)}%"></i></span></div>`).join(''); }
   function finishRoom(){ if(!R||!R.host||R.phase==='end') return; R.phase='end'; unpubRoom(); const p=[...R.players].sort((a,b)=>b.score-a.score); send({t:'end',p}); }
   function results(ps){ const me=ps.find(p=>p.id===myId()), rank=ps.findIndex(p=>p.id===myId())+1, win=rank===1;
     let pts;
