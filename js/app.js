@@ -1438,14 +1438,14 @@ const DUEL=(()=>{
     D.over=true; cleanup=()=>leave(true);
     const iWon=d.win===D.id, draw=!d.win;
     const myN=d.mid===D.id?d.mine:d.opp, opN=d.mid===D.id?d.opp:d.mine;
-    const myPts=iWon?500:(draw?250:0); gameDone();
+    const myPts=iWon?120:(draw?0:-120); gameDone();
     submitScore('hl',Math.max(-300,myPts));try{const _s=prog();_s.st=_s.st||{};_s.st.won=_s.st.won||{};_s.st.won.hl=(_s.st.won.hl||0)+(iWon?1:0);saveProg(_s);}catch(e){};
     const opName=esc(D.opp.name||'Rakip');
     swap(`<div class="end"><span class="mono dim">Düello · bitti</span><b style="color:${iWon?'var(--gold)':draw?'var(--fg)':'var(--red)'}">${iWon?'Kazandın!':draw?'Berabere':'Kaybettin'}</b>
       <div class="duel" style="text-align:center">
       <div class="ob" style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)"><span>${opName}</span><span>${opN} doğru</span></div>
       <div class="ob" style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)"><span>Sen</span><span>${myN} doğru</span></div></div>
-      <p class="dim" style="margin:0">+${myPts} puan sıralamaya yazıldı</p>
+      <p class="dim" style="margin:0">${myPts>0?'+':''}${myPts} puan sıralamaya yazıldı</p>
       <div class="rowb"><button class="btn p" id="dAgain" type="button" style="height:50px"><span class="bl"><span>Yeni düello</span><span>Yeni düello</span></span></button><button class="ghost" id="dShr" type="button" style="height:50px">📤 Paylaş</button><button class="btn g" id="dClose" type="button" style="height:50px"><span class="bl"><span>Kapat</span><span>Kapat</span></span></button></div></div>`);
     $('#dAgain').onclick=()=>menu(); $('#dClose').onclick=()=>closeModal(); const _ds=$('#dShr'); _ds&&(_ds.onclick=()=>window.shareResult&&shareResult({title:'Düello · Yüksek mi Düşük',win:iWon,badge:iWon?'🏆 DÜELLO ŞAMPİYONU!':draw?'🤝 BERABERE':'MAÇ BİTTİ',rows:[{name:opName,n:opN},{name:'Sen',n:myN,me:true}]}));
     SFX.play(iWon?'win':'lose'); if(iWon){SFX.sfx('intro',{vol:.4}); burst(true);}
@@ -2239,7 +2239,7 @@ const VIEW=(()=>{ const self={};
       try{ hand.forEach(h=>h.el&&h.el.remove()); }catch(e){} hand=[]; slots={}; potEls.forEach(el=>el.remove()); potEls=[]; $$('.slotG,.mypile,.hc',B).forEach(x=>x.remove()); try{G.killTweensOf([B,A]);}catch(e){}
       playing=false; hint(''); BAR.innerHTML=''; $('#atimer').hidden=true; const meR=e.ranking.findIndex(r=>r.id===me), myT=players.find(p=>p.id===me); const win=(e.winTeam!=null&&e.winTeam>=0)?(myT&&myT.team===e.winTeam):meR===0;
       const _hum=(e.ranking||[]).filter(p=>!p.bot).length; const _sm=_hum<=1?.5:1; window.__MT_SOLO=_sm; const mineR=e.ranking[meR]; gameDone();
-      const CONS=[200,120,80,50,35,25,15,10]; const cw=mineR?(win?800:(CONS[Math.min(Math.max(meR,0),CONS.length-1)]||10)):0; const shown=Math.round(cw*_sm);
+      const CONS=[36,24,14,9,6,4,3,2]; const cw=mineR?(win?120:(CONS[Math.min(Math.max(meR,0),CONS.length-1)]||2)):0; const shown=Math.round(cw*_sm);
       S(win?'win':'lose'); if(win){ winShow(VIEW._teams?'TAKIMIN ŞAMPİYON!':'ŞAMPİYON!','+'+shown+' puan',true); }
       if(mineR){ submitScore('cards',cw); if(win) setCoins(Math.max(0,(coins()||0)-Math.floor(cw/2))); setTimeout(()=>toast(win?'Maç kazanıldı':'Maç bitti','+'+shown+' puan'),900); }
       recordMatch(e.ranking);
@@ -5748,13 +5748,16 @@ const INV_CSS=`
     b.innerHTML=ps.map((p,i)=>`<div class="${p.id===myId()?'me':''}${p.done?' done':''}"><span class="mono">${i+1}.</span><span>${esc(p.name)}${p.done?' ✓':''}</span><b>${p.score}</b><span class="on-bar"><i style="width:${Math.round((p.prog||0)*100)}%"></i></span></div>`).join(''); }
   function finishRoom(){ if(!R||!R.host||R.phase==='end') return; R.phase='end'; unpubRoom(); const p=[...R.players].sort((a,b)=>b.score-a.score); send({t:'end',p}); }
   function results(ps){ const me=ps.find(p=>p.id===myId()), rank=ps.findIndex(p=>p.id===myId())+1, win=rank===1;
-    const pts=Math.max(-300,Math.min(1500,Math.round((me?me.score:0)+(win&&ps.length>1?200:0))));
+    let pts;
+    if(me&&me.score<0) pts=-Math.min(120,-me.score);
+    else { const CONS=[40,24,14,9,6,4,3,2]; pts=(win&&ps.length>1)?120:(CONS[Math.min(Math.max(rank-1,0),CONS.length-1)]||2); }
+    pts=Math.max(-120,Math.min(120,Math.round(pts)));
     if(pts) submitScore(R.game,pts);
     if(win&&ps.length>1){ try{ const s=prog(); s.st=s.st||{}; s.st.won=s.st.won||{}; s.st.won[R.game]=(s.st.won[R.game]||0)+1; saveProg(s); }catch(e){} }
     SFX.play(win?'win':'click'); win&&burst&&burst(true);
     swap(`<div class="on-res"><span class="mono dim">${GAMES[R.game].n} · ONLINE · SONUÇ</span><div class="w">${win?'🏆 KAZANDIN!':rank+'. oldun'}</div>
       <div class="on-lb">${ps.map((p,i)=>`<div class="${p.id===myId()?'me':''}"><span class="mono">${['🥇','🥈','🥉'][i]||i+1+'.'}</span><span>${esc(p.name)}</span><b>${p.score}</b></div>`).join('')}</div>
-      <p style="margin:0">${pts>0?`Sıralamaya <b style="color:var(--gold)">+${pts} puan</b>${win&&ps.length>1?' (kazanma bonusu dahil)':''} yazıldı.`:'Bu sefer puan alamadın.'}</p>
+      <p style="margin:0">${pts>0?`Sıralamaya <b style="color:var(--gold)">${pts>0?'+':''}${pts} puan</b> yazıldı.`:'Bu sefer puan alamadın.'}</p>
       <div class="rowb" style="justify-content:center">${R.host?'<button class="btn p" id="onAgain" type="button"><span class="bl"><span>Tekrar oyna</span><span>Tekrar oyna</span></span></button>':'<span class="dim">Kurucu tekrar başlatabilir…</span>'}<button class="ghost" id="onOut" type="button">Çık</button></div></div>`);
     const a=$('#onAgain'); a&&(a.onclick=()=>{ R.phase='lobby'; R.players.forEach(p=>{p.score=0;p.prog=0;p.done=false;}); send({t:'pl',p:R.players}); lobby(); });
     $('#onOut').onclick=()=>{ leave(); closeModal(); }; }
